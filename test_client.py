@@ -3,6 +3,7 @@ import asyncio
 import discord.http
 import os
 from rebellion.gateway.client import Websocket
+from rebellion.gateway.handler import EventHandler
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
@@ -15,7 +16,7 @@ async def main():
     print(f"{url=}")
     ws = await http.ws_connect(url[1])
     print(ws)
-    websocket = Websocket(ws, loop=http.loop, token=os.environ["DISCORD_BOT_TOKEN"], initial=True)
+    websocket = Websocket(ws, EventHandler(), loop=http.loop, token=os.environ["DISCORD_BOT_TOKEN"], initial=True)
     await websocket.poll_event()
     await websocket.identify()
     while True:

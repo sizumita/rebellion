@@ -13,13 +13,19 @@ import sys
 from aiohttp import ClientWebSocketResponse, WSMsgType, WSMessage
 
 from rebellion.types.gateway.client import OpCode, Payload
+from .handler import EventHandler
 
 logger = logging.getLogger(__name__)
 
 
 class KeepAlive(threading.Thread):
-    def __init__(self, ws: 'Websocket', interval: int, shard_id: Optional[int],
-                 *args: tuple[Any], **kwargs: dict[str, Any]):
+    def __init__(
+            self,
+            ws: 'Websocket',
+            interval: int,
+            shard_id: Optional[int] = None,
+            *args: tuple[Any],
+            **kwargs: dict[str, Any]):
         self.ws = ws
         self.interval = interval
         self.shard_id = shard_id
@@ -98,17 +104,23 @@ class KeepAlive(threading.Thread):
 
 class Websocket:
     def __init__(
-            self, socket: ClientWebSocketResponse, *, loop: asyncio.BaseEventLoop, token: str, initial: bool = False,
+            self,
+            socket: ClientWebSocketResponse,
+            handler: Optional[EventHandler] = None,
+            *,
+            loop: asyncio.BaseEventLoop,
+            token: str, initial: bool = False,
             session_id: Optional[int] = None, shard_id: Optional[int] = None, shard_count: Optional[int] = None, resume: bool = False) -> None:
         self.socket: ClientWebSocketResponse = socket
         self.loop: asyncio.BaseEventLoop = loop
+        self.handler: Optional[EventHandler] = handler
 
-        self.token = token
-        self.is_initial = initial
-        self.shard_id = shard_id
-        self.shard_count = shard_count
-        self.is_resume = resume
-        self.timeout = 60.0
+        self.token: str = token
+        self.is_initial: bool = initial
+        self.shard_id: Optional[int] = shard_id
+        self.shard_count: Optional[int] = shard_count
+        self.is_resume: bool = resume
+        self.timeout: float = 60.0
         self._zlib = zlib.decompressobj()
         self._buffer = bytearray()
         self.session_id = session_id
@@ -166,8 +178,11 @@ class Websocket:
     async def send_json(self, payload: Payload):
         await self.send(json.dumps(payload, separators=(',', ':'), ensure_ascii=True))
 
-    async def handle_event(self, data: dict):
-        logger.debug(f"handle event: {data}")
+    async def handle_event(self, payload: Payload):
+        logger.debug(f"handle event: {payload.get('d')}")
+        event = payload.get('t')
+        if self.handler is not None:
+            await self.handler.handle(event, payload.get('d'))
 
     async def received_message(self, payload: Payload):
         logger.debug(f"Shard ID {self.shard_id}: WebSocket Event: {payload}")
