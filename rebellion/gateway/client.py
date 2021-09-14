@@ -131,6 +131,14 @@ class WebsocketClient:
 
         self.thread_id = threading.get_ident()
 
+    async def initialize(self, intents: Optional[Intents] = None):
+        await self.poll_event()
+        await self.identify(intents=intents)
+
+    async def start(self):
+        while True:
+            await self.poll_event()
+
     async def close(self, code: int = 4000):
         if self.keep_alive is not None:
             self.keep_alive.stop()

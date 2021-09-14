@@ -18,10 +18,8 @@ async def main():
     ws = await http.ws_connect(url[1])
     print(ws)
     websocket = WebsocketClient(ws, EventHandler(), loop=http.loop, token=os.environ["DISCORD_BOT_TOKEN"], initial=True)
-    await websocket.poll_event()
-    await websocket.identify(intents=Intents.default() - IntentValue.GUILD_MESSAGE_TYPING - IntentValue.GUILDS)
-    while True:
-        await websocket.poll_event()
+    await websocket.initialize(Intents.default() - IntentValue.GUILD_MESSAGE_TYPING - IntentValue.GUILDS)
+    await websocket.start()
 
 
 asyncio.run(main())
