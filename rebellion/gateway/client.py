@@ -14,6 +14,7 @@ from aiohttp import ClientWebSocketResponse, WSMsgType, WSMessage
 
 from rebellion.types.gateway.client import OpCode, Payload
 from .handler import EventHandler
+from .intents import Intents
 
 logger = logging.getLogger(__name__)
 
@@ -131,9 +132,12 @@ class Websocket:
         self.thread_id = threading.get_ident()
 
     async def close(self, code: int = 4000):
-        pass
+        if self.keep_alive is not None:
+            self.keep_alive.stop()
+            self.keep_alive = None
+        await self.socket.close(code=code)
 
-    async def identify(self, activity=None, status=None, intents=None):
+    async def identify(self, activity=None, status=None, intents: Optional[Intents] = None):
         payload = Payload(
             op=OpCode.IDENTIFY,
             d={

@@ -4,6 +4,7 @@ import discord.http
 import os
 from rebellion.gateway.client import Websocket
 from rebellion.gateway.handler import EventHandler
+from rebellion.gateway.intents import Intents, IntentValue
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
@@ -18,7 +19,7 @@ async def main():
     print(ws)
     websocket = Websocket(ws, EventHandler(), loop=http.loop, token=os.environ["DISCORD_BOT_TOKEN"], initial=True)
     await websocket.poll_event()
-    await websocket.identify()
+    await websocket.identify(intents=Intents.default() - IntentValue.GUILD_MESSAGE_TYPING - IntentValue.GUILDS)
     while True:
         await websocket.poll_event()
 
