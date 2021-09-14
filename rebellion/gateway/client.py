@@ -13,6 +13,7 @@ import sys
 from aiohttp import ClientWebSocketResponse, WSMsgType, WSMessage
 
 from rebellion.types.gateway.client import OpCode, Payload
+from rebellion.types.gateway.activity import Status, Activity
 from .handler import EventHandler
 from .intents import Intents
 
@@ -145,7 +146,11 @@ class WebsocketClient:
             self.keep_alive = None
         await self.socket.close(code=code)
 
-    async def identify(self, activity=None, status=None, intents: Optional[Intents] = None):
+    async def identify(
+            self,
+            activity: Optional[Activity] = None,
+            status: Optional[Status] =None,
+            intents: Optional[Intents] = None):
         payload = Payload(
             op=OpCode.IDENTIFY,
             d={
@@ -183,6 +188,18 @@ class WebsocketClient:
     async def send_heatbeat(self, payload: Payload):
         await self.send_json(payload)
 
+    async def change_presence(self, activity: Optional[Activity] = None, status: Optional[Status] = None, since: float = 0.0):
+        payload = Payload(
+            op=OpCode.PRESENCE,
+            d={
+                "activities": [] if activity is None else [activity],
+                "afk": False,
+                "since": since if status != "idle" else int(time.time() * 1000),
+                "status": status
+            }
+        )
+        await self.send_json(payload)
+
     async def send(self, data: str):
         # TODO: Rate limit
         await self.socket.send_str(data)
@@ -191,10 +208,15 @@ class WebsocketClient:
         await self.send(json.dumps(payload, separators=(',', ':'), ensure_ascii=True))
 
     async def handle_event(self, payload: Payload):
-        logger.debug(f"handle event: {payload.get('d')}")
+        data = payload.get('d')
         event = payload.get('t')
+        logger.debug(f"handle event: {event}")
+        if event == "READY":
+            self.sequence = payload['s']
+            self.session_id = data["session_id"]
+
         if self.handler is not None:
-            await self.handler.handle(event, payload.get('d'))
+            await self.handler.handle(self, event, data)
 
     async def received_message(self, payload: Payload):
         logger.debug(f"Shard ID {self.shard_id}: WebSocket Event: {payload}")
@@ -208,7 +230,7 @@ class WebsocketClient:
             self.keep_alive.tick()
 
         if op == OpCode.DISPATCH:
-            await self.handle_event(data)
+            await self.handle_event(payload)
         elif op == OpCode.HEARTBEAT_ACK:
             if self.keep_alive is not None:
                 self.keep_alive.ack()
