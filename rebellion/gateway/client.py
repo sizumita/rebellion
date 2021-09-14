@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class KeepAlive(threading.Thread):
     def __init__(
             self,
-            ws: 'Websocket',
+            ws: 'WebsocketClient',
             interval: int,
             shard_id: Optional[int] = None,
             *args: tuple[Any],
@@ -103,7 +103,7 @@ class KeepAlive(threading.Thread):
             logger.warning("Can\'t keep up, shard ID %s websocket is %.1fs behind.", self.shard_id, self.latency)
 
 
-class Websocket:
+class WebsocketClient:
     def __init__(
             self,
             socket: ClientWebSocketResponse,
